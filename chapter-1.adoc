@@ -1,0 +1,177 @@
+:tip-caption: 💡
+:warning-caption: 💣
+
+ifdef::env-github[]
+:tip-caption: :bulb:
+endif::[]
+
+= Tutorial: shipping a web app into a Kubernetes cluster
+
+This tutorial aims to be a didactic kickstart material for onboarding a web app into a Kubernetes cluster from scratch.
+First, we will create a Kubernetes cluster in a local machine using the link:https://devops-stack.io[the Devops Stack].
+Then, we will run a rather trivial `hello-wolrd` app. 
+Finally, we will deploy a app into the cluster and show how to manage it like a pro, with some of the best open-source monitoring and deployment DevOps tools available.
+
+[WARNING]
+The tutorial will use an example web app written by Camptocamp.
+This is nothing but a dummy client web app and a server meant to be used for demostrations purposes only.
+
+== Objectives of the tutorial
+
+- learning how to deploy your own k8s cluster on your local docker system using link:https://devops-stack.io[the Devops Stack].
+- onboarding a `hello-world` app into k8s cluster
+- onboarding a `web app` into k8s cluster
+
+== Context: the web app
+
+Lets imagine for a sec you are software developer helping a friend set up an e-commerce site for selling some products online.
+You already have written parts of your app, a sort of a MVP. 
+
+Your app consists of:
+
+* a basic REST API backend which can be used for:
+   - retrieving products info
+   - buying products
+   - retrieving quantity of products views
+   - retrieving quantity of products bought
+* a basic frontend for interacting with your REST API.
+
+link:https://github.com/camptocamp/containers-course-app/[Here a git repo] with the app we are going to use for this tutorial.
+The app consists of a backend written in 3 different languages (`go`,`python` and `java`) and a frontend (written in `php`).
+
+Now, to set up some context, imagine the code still needs some enhancements but your friend insists that the sites needs to go live given that his warehouse is already full and new arrivals are coming in the upcoming weeks!
+So like a fluttering bird pushed from the nest your app needs to fly now.
+
+== Requirements
+
+A few important requirements to take into account before going into production are:
+
+* The app only implements a minimal set of features, new ones will come in the near future, hence **several iterations of the site may have to be rolled-out**.
+* These iterations may contains bugs as new features are introduced, hence ** the deployment may have to be rolled-back to a previous working state**.
+* The e-commerce site may grow in popularity so the engine that serves all the REST API calls can cope with the requests, hence **the deployment may have to be scaled-up**.
+
+
+[TIP]
+.Start day 1 with the right foot!
+====
+This tutorial will demonstrate how onboarding the web app into a Kubernetes cluster provides you with an environment where these requirements are met off the shelf.
+You will be able to test k8s features from the confort of your localhost.
+Redeploying into any k8s cloud provider will be straightforward. 
+
+====
+
+== Creating your local Kubernetes cluster
+
+Lets create a minimal working example following the link:https://devops-stack.io/docs/devops-stack/0.32.0/howtos/quickstart_k3s_docker.html[Quickstart for k3s on docker]
+
+=== 1. write your terraform module for the k8s cluster
+
+Without getting into too much detail, we will instantiate a terraform module for link:https://devops-stack.io[the Devops Stack] which will provision the k8s cluster (among other things).
+
+Create a directory, e.g. `my-devops-project` and and from within create the `main.tf` terraform file:
+
+``` hcl
+module "cluster" {
+  source = "git::https://github.com/camptocamp/devops-stack.git//modules/k3s/docker?ref=v0.30.0"
+  cluster_name = "my-cluster"
+}
+```
+
+Create also a simple output file `outputs.tf`:
+
+``` hcl
+output "kubeconfig" {
+  sensitive = true
+  value     = module.cluster.kubeconfig
+}
+
+```
+
+=== 2. deploy the cluster
+
+Now, lets build the cluster using terraform:
+
+link:https://learn.hashicorp.com/tutorials/terraform/install-cli[Install terraform cli] and then run:
+
+```shell
+terraform init
+terraform apply
+terraform output kubeconfig
+```
+
+=== 3. verify k8s cluster API is up
+
+Now the cluster is running inside of your docker engine.
+To verify this, link:https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/[install kubectl] to interact with your cluster from the conform of a terminal.
+
+Export path to `kubectl` config file.
+
+```shell
+export KUBECONFIG=$PWD/kubeconfig.yaml
+```
+
+Query API to get your cluster pods:
+
+```shell
+kubectl get pods --all-namespace
+
+NAMESPACE               NAME                                                        READY   STATUS    RESTARTS   AGE
+kube-system             local-path-provisioner-6d59f47c7-nq647                      1/1     Running   0          19m
+kube-system             metrics-server-7949d47784-4zvd7                             1/1     Running   0          17m
+kube-system             coredns-7944c66d8d-x2jlr                                    1/1     Running   0          19m
+argocd                  argocd-redis-5644d9f997-4wlgj                               1/1     Running   0          19m
+argocd                  argocd-dex-server-b7d78f98-rvh2g                            1/1     Running   0          19m
+argocd                  argocd-server-56986c4596-fgbzn                              1/1     Running   0          19m
+argocd                  argocd-application-controller-5c5d495d77-nkpvw              1/1     Running   0          19m
+argocd                  argocd-repo-server-59f5678fcd-qjs5x                         1/1     Running   0          19m
+kube-prometheus-stack   kube-prometheus-stack-operator-54944cdfcc-ddq92             1/1     Running   0          18m
+kube-prometheus-stack   kube-prometheus-stack-prometheus-node-exporter-f8jpp        1/1     Running   0          18m
+kube-prometheus-stack   kube-prometheus-stack-prometheus-node-exporter-gpqvg        1/1     Running   0          18m
+kube-prometheus-stack   kube-prometheus-stack-prometheus-node-exporter-wrn5g        1/1     Running   0          18m
+kube-prometheus-stack   kube-prometheus-stack-kube-state-metrics-6b65958dcd-vhd6f   1/1     Running   0          18m
+kube-prometheus-stack   kube-prometheus-stack-grafana-5b78d78748-zc8dj              2/2     Running   0          18m
+(...)
+
+```
+
+As you may have noticed, inside of k8s cluster we have already several pods running.
+Don't panic, this is normal.. 
+They are mean to handle the app monitoring and operations.
+
+TIP: This bundle of apps, all k8s-ready, is what we call at link:camptocamp.com[Camptocamp] link:https://devops-stack.io[the Devops Stack], we will come back to this later, but in short they will provide you out-of-the-box the tools you need to manage and operate your app like a pro. 
+
+Now, your k8s cluster's API is up and running, lets run something!
+
+=== 4. deploy a `hello-world` pod
+
+Lets spawn a very basic, short-lived pod into our k8s cluster.
+
+First, create `pod-hello-world.yaml`
+
+[source,yaml]
+----
+include::pod-hello-world.yaml[]
+----
+
+Proceed to spawn pod
+
+`kubectl apply -f pod-hello-world.yaml`
+
+Check output
+
+`kubectl logs hello-world`
+
+You should see as logged output: "Hello world !!"
+
+Delete pod
+
+`kubectl delete pod hello-world`
+
+
+
+[TIP]
+.Hip Hip Hurra!
+====
+If you have reached this part of the tutorial then kudos to you!
+You have deployed a k8s cluster onboarded an app inside it!
+====
