@@ -8,7 +8,7 @@ endif::[]
 = Tutorial: Shipping a Web App into a Kubernetes Cluster
 
 This tutorial aims to be a didactic kickstart material for onboarding a web app into a Kubernetes cluster from scratch.
-First, we will create a Kubernetes cluster on a local machine using link:https://devops-stack.io[the Devops Stack].
+First, we will create a Kubernetes cluster on a local machine using link:https://devops-stack.io[the DevOps Stack].
 Then, we will run a rather trivial `hello-wolrd` app. 
 Finally, we will deploy an app into the cluster and show how to manage it like a pro, with some of the best Open Source monitoring and deployment DevOps tools available.
 
@@ -18,7 +18,7 @@ This is simply a dummy client/server web app meant to be used for demo purposes 
 
 == Tutorial Objectives
 
-- learning how to deploy a k8s cluster on your local docker system using link:https://devops-stack.io[the Devops Stack].
+- learning how to deploy a k8s cluster on your local docker system using link:https://devops-stack.io[the DevOps Stack].
 - onboarding a `hello-world` app into the k8s cluster
 - onboarding a `web app` into the k8s cluster
 
@@ -66,7 +66,7 @@ Let's create a minimal working example following the link:https://devops-stack.i
 
 === 1. Write your Terraform Module for the K8s Cluster
 
-Without getting into too much detail, we will instantiate a Terraform module for link:https://devops-stack.io[the Devops Stack], which will provision the k8s cluster (among other things).
+Without getting into too much detail, we will instantiate a Terraform module for link:https://devops-stack.io[the DevOps Stack], which will provision the k8s cluster (among other things).
 
 Create a directory, e.g. `my-devops-project`, and create the `main.tf` terraform file in it:
 
@@ -139,7 +139,7 @@ Don't panic, this is normal…
 They are meant to handle the app monitoring and operations.
 
 [TIP]
-This bundle of apps, all k8s-ready, is what we at link:camptocamp.com[Camptocamp] call link:https://devops-stack.io[the Devops Stack], we will come back to this later, but in short they will provide out-of-the-box the tools you need to manage and operate your app. 
+This bundle of apps, all k8s-ready, is what we at link:camptocamp.com[Camptocamp] call link:https://devops-stack.io[the DevOps Stack], we will come back to this later, but in short they will provide out-of-the-box the tools you need to manage and operate your app. 
 
 Now, your k8s cluster's API is up and running, let's run something!
 
